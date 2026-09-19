@@ -1,5 +1,6 @@
 const repositoryList = document.querySelector('#repository-list');
 const repositoryCount = document.querySelector('#repository-count');
+const requestTimeout = 10000;
 
 const formatStars = (stars) => new Intl.NumberFormat('en', {
   notation: 'compact',
@@ -89,13 +90,16 @@ const renderRepositories = (repositories) => {
 };
 
 const loadRepositories = async () => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
+
   try {
     repositoryList.replaceChildren(
       createTextElement('p', 'status-message', 'Loading repositories...'),
     );
     repositoryCount.textContent = '';
 
-    const response = await fetch('events.json');
+    const response = await fetch('events.json', { signal: controller.signal });
 
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
@@ -119,6 +123,8 @@ const loadRepositories = async () => {
     repositoryList.replaceChildren(errorMessage);
     repositoryCount.textContent = '';
     console.error(error);
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
