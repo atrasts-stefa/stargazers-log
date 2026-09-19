@@ -6,40 +6,110 @@ const formatStars = (stars) => new Intl.NumberFormat('en', {
   maximumFractionDigits: 1
 }).format(stars);
 
+const isRepository = (repository) => (
+  repository
+  && typeof repository.name === 'string'
+  && typeof repository.owner === 'string'
+  && typeof repository.description === 'string'
+  && typeof repository.language === 'string'
+  && typeof repository.stars === 'number'
+  && Number.isFinite(repository.stars)
+  && typeof repository.url === 'string'
+  && /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(repository.url)
+);
+
+const getRepositories = (data) => {
+  if (!Array.isArray(data) || !data.every(isRepository)) {
+    throw new Error('Repository data has an invalid shape');
+  }
+
+  return data;
+};
+
+const createTextElement = (tagName, className, text) => {
+  const element = document.createElement(tagName);
+  element.className = className;
+  element.textContent = text;
+  return element;
+};
+
 const renderRepositories = (repositories) => {
   repositoryCount.textContent = `${repositories.length} saved`;
 
   if (repositories.length === 0) {
-    repositoryList.innerHTML = '<p class="status-message">No starred repositories yet.</p>';
+    repositoryList.replaceChildren(
+      createTextElement('p', 'status-message', 'No starred repositories yet.'),
+    );
     return;
   }
 
-  repositoryList.innerHTML = repositories.map((repository) => `
-    <article class="repository-card">
-      <div>
-        <p class="repository-owner">${repository.owner} /</p>
-        <h3><a href="${repository.url}" target="_blank" rel="noreferrer">${repository.name}</a></h3>
-        <p class="repository-description">${repository.description}</p>
-      </div>
-      <div class="repository-meta">
-        <span class="language">${repository.language}</span>
-        <span>${formatStars(repository.stars)} stars</span>
-      </div>
-    </article>
-  `).join('');
+  const cards = repositories.map((repository) => {
+    const content = document.createElement('div');
+    content.append(
+      createTextElement('p', 'repository-owner', `${repository.owner} /`),
+    );
+
+    const heading = document.createElement('h3');
+    const link = document.createElement('a');
+    link.href = repository.url;
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    link.textContent = repository.name;
+    heading.append(link);
+    content.append(heading);
+    content.append(
+      createTextElement(
+        'p',
+        'repository-description',
+        repository.description,
+      ),
+    );
+
+    const metadata = document.createElement('div');
+    metadata.className = 'repository-meta';
+    metadata.append(
+      createTextElement('span', 'language', repository.language),
+      createTextElement('span', '', `${formatStars(repository.stars)} stars`),
+    );
+
+    const card = document.createElement('article');
+    card.className = 'repository-card';
+    card.append(content, metadata);
+    return card;
+  });
+
+  repositoryList.replaceChildren(...cards);
 };
 
 const loadRepositories = async () => {
   try {
+    repositoryList.replaceChildren(
+      createTextElement('p', 'status-message', 'Loading repositories...'),
+    );
+    repositoryCount.textContent = '';
+
     const response = await fetch('events.json');
 
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
     }
 
-    renderRepositories(await response.json());
+    renderRepositories(getRepositories(await response.json()));
   } catch (error) {
-    repositoryList.innerHTML = '<p class="status-message">Could not load repositories. Please try again.</p>';
+    const message = error.message === 'Repository data has an invalid shape'
+      ? 'Repository data is invalid.'
+      : 'Could not load repositories.';
+    const errorMessage = createTextElement(
+      'p',
+      'status-message',
+      message,
+    );
+    const retryButton = document.createElement('button');
+    retryButton.type = 'button';
+    retryButton.textContent = 'Try again';
+    retryButton.addEventListener('click', loadRepositories);
+    errorMessage.append(' ', retryButton);
+    repositoryList.replaceChildren(errorMessage);
     repositoryCount.textContent = '';
     console.error(error);
   }
