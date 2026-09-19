@@ -10,14 +10,17 @@ const isNonEmptyString = (value) => (
   typeof value === 'string' && value.trim().length > 0
 );
 
+const isSafeInteger = (value) => (
+  Number.isSafeInteger(value) && value >= 0
+);
+
 const isRepository = (repository) => (
   repository
   && isNonEmptyString(repository.name)
   && isNonEmptyString(repository.owner)
   && isNonEmptyString(repository.description)
   && isNonEmptyString(repository.language)
-  && Number.isSafeInteger(repository.stars)
-  && repository.stars >= 0
+  && isSafeInteger(repository.stars)
   && isNonEmptyString(repository.url)
   && /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(repository.url)
 );
