@@ -6,15 +6,19 @@ const formatStars = (stars) => new Intl.NumberFormat('en', {
   maximumFractionDigits: 1
 }).format(stars);
 
+const isNonEmptyString = (value) => (
+  typeof value === 'string' && value.trim().length > 0
+);
+
 const isRepository = (repository) => (
   repository
-  && typeof repository.name === 'string'
-  && typeof repository.owner === 'string'
-  && typeof repository.description === 'string'
-  && typeof repository.language === 'string'
-  && typeof repository.stars === 'number'
-  && Number.isFinite(repository.stars)
-  && typeof repository.url === 'string'
+  && isNonEmptyString(repository.name)
+  && isNonEmptyString(repository.owner)
+  && isNonEmptyString(repository.description)
+  && isNonEmptyString(repository.language)
+  && Number.isSafeInteger(repository.stars)
+  && repository.stars >= 0
+  && isNonEmptyString(repository.url)
   && /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(repository.url)
 );
 
